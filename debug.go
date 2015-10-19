@@ -104,15 +104,7 @@ func Debug(name string) DebugFunction {
 
 		d := deltas(prevGlobal, prev, color)
 
-		var lineNumber string
-		if showLineNumbers {
-
-			pc, fn, line, _ := runtime.Caller(1)
-
-			lineNumber = fmt.Sprintf(" - %s[%s:%d]", runtime.FuncForPC(pc).Name(), fn, line)
-		} else {
-			lineNumber = ""
-		}
+		lineNumber := lineNumbers()
 
 		fmt.Fprintf(writer, d+" \033["+color+"m"+name+lineNumber+"\033[0m - "+format+"\n", args...)
 		prevGlobal = time.Now()
@@ -128,6 +120,21 @@ func deltas(prevGlobal, prev time.Time, color string) string {
 	ts := now.UTC().Format("15:04:05.000")
 	deltas := fmt.Sprintf("%s %-6s \033["+color+"m%-6s", ts, humanizeNano(global), humanizeNano(delta))
 	return deltas
+}
+
+func lineNumbers() string {
+	if showLineNumbers {
+		_, fn, line, _ := runtime.Caller(2)
+
+		goPath := os.Getenv("GOPATH")
+
+		substring := fn[(strings.Index(fn, goPath) + len(goPath)):]
+		substring = fmt.Sprintf("$GOPATH/%s", substring)
+
+		return fmt.Sprintf(" - [%s:%d]", substring, line)
+	} else {
+		return ""
+	}
 }
 
 // Humanize nanoseconds to a string.
