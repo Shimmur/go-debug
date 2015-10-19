@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,10 +14,11 @@ import (
 )
 
 var (
-	writer  io.Writer = os.Stderr
-	reg     *regexp.Regexp
-	m       sync.Mutex
-	enabled = false
+	writer          io.Writer = os.Stderr
+	reg             *regexp.Regexp
+	m               sync.Mutex
+	enabled         = false
+	showLineNumbers = false
 )
 
 // Debugger function.
@@ -37,6 +39,17 @@ func init() {
 	env := os.Getenv("DEBUG")
 
 	if "" != env {
+		envShowLineNumbers := os.Getenv("DEBUG_SHOW_LINE_NUMBERS")
+
+		if "" != envShowLineNumbers {
+			sln, err := strconv.ParseBool(envShowLineNumbers)
+			if err != nil {
+				panic(err)
+			}
+
+			showLineNumbers = sln
+		}
+
 		Enable(env)
 	}
 }
@@ -90,7 +103,10 @@ func Debug(name string) DebugFunction {
 		}
 
 		d := deltas(prevGlobal, prev, color)
-		fmt.Fprintf(writer, d+" \033["+color+"m"+name+"\033[0m - "+format+"\n", args...)
+
+		lineNumber := lineNumbers()
+
+		fmt.Fprintf(writer, d+" \033["+color+"m"+name+lineNumber+"\033[0m - "+format+"\n", args...)
 		prevGlobal = time.Now()
 		prev = time.Now()
 	}
@@ -104,6 +120,21 @@ func deltas(prevGlobal, prev time.Time, color string) string {
 	ts := now.UTC().Format("15:04:05.000")
 	deltas := fmt.Sprintf("%s %-6s \033["+color+"m%-6s", ts, humanizeNano(global), humanizeNano(delta))
 	return deltas
+}
+
+func lineNumbers() string {
+	if showLineNumbers {
+		_, fn, line, _ := runtime.Caller(2)
+
+		goPath := os.Getenv("GOPATH")
+
+		substring := fn[(strings.Index(fn, goPath) + len(goPath)):]
+		substring = fmt.Sprintf("$GOPATH/%s", substring)
+
+		return fmt.Sprintf(" - [%s:%d]", substring, line)
+	} else {
+		return ""
+	}
 }
 
 // Humanize nanoseconds to a string.

@@ -55,6 +55,8 @@ If you run the program with the `DEBUG=*` environment variable you will see:
 
 A timestamp and two deltas are displayed. The timestamp consists of hour, minute, second and microseconds. The left-most delta is relative to the previous debug call of any name, followed by a delta specific to that debug function. These may be useful to identify timing issues and potential bottlenecks.
 
+If you run the program with the `DEBUG_SHOW_LINE_NUMBERS=true` environment variable, it will print the function, file, and line number as well.
+
 ## The DEBUG environment variable
 
  Executables often support `--verbose` flags for conditional logging, however
