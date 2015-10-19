@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,10 +14,11 @@ import (
 )
 
 var (
-	writer  io.Writer = os.Stderr
-	reg     *regexp.Regexp
-	m       sync.Mutex
-	enabled = false
+	writer          io.Writer = os.Stderr
+	reg             *regexp.Regexp
+	m               sync.Mutex
+	enabled         = false
+	showLineNumbers = false
 )
 
 // Debugger function.
@@ -37,6 +39,17 @@ func init() {
 	env := os.Getenv("DEBUG")
 
 	if "" != env {
+		envShowLineNumbers := os.Getenv("DEBUG_SHOW_LINE_NUMBERS")
+
+		if "" != envShowLineNumbers {
+			sln, err := strconv.ParseBool(envShowLineNumbers)
+			if err != nil {
+				panic(err)
+			}
+
+			showLineNumbers = sln
+		}
+
 		Enable(env)
 	}
 }
@@ -90,7 +103,18 @@ func Debug(name string) DebugFunction {
 		}
 
 		d := deltas(prevGlobal, prev, color)
-		fmt.Fprintf(writer, d+" \033["+color+"m"+name+"\033[0m - "+format+"\n", args...)
+
+		var lineNumber string
+		if showLineNumbers {
+
+			pc, fn, line, _ := runtime.Caller(1)
+
+			lineNumber = fmt.Sprintf(" - %s[%s:%d]", runtime.FuncForPC(pc).Name(), fn, line)
+		} else {
+			lineNumber = ""
+		}
+
+		fmt.Fprintf(writer, d+" \033["+color+"m"+name+lineNumber+"\033[0m - "+format+"\n", args...)
 		prevGlobal = time.Now()
 		prev = time.Now()
 	}
